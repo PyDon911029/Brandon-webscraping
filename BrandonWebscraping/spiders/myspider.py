@@ -113,7 +113,7 @@ class Myspider(scrapy.Spider):
                 img_url = img_urls[0]
                 if self.is_relative(img_url):
                     img_url = urljoin(response.request.url, img_url)
-                url_fn = os.path.basename(p)
+                url_fn = os.path.basename(urlparse(img_url).path)
                 path = Path(self.project_dir + '/output')
                 if not path.exists():
                     path.mkdir()
