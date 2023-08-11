@@ -34,4 +34,5 @@ twisted-iocpsupport==1.0.3
 typing_extensions==4.7.1
 urllib3==2.0.4
 w3lib==2.1.2
+wget==3.2
 zope.interface==6.0

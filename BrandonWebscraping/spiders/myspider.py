@@ -1,26 +1,45 @@
 import os
+import requests
+import wget
 import scrapy
 from scrapy import Selector
 from scrapy import signals
 from scrapy.signalmanager import dispatcher
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 import json
+from pathlib import Path
 import tldextract
+import subprocess
 
 class Myspider(scrapy.Spider):
     name = "myspider"
     allowed_domains = ["example.com"]
     user_agent = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/22.0.1207.1 Safari/537.1'
-    successed_counts = 0    
+    successed_counts = 0
     
+    project_dir = os.getcwd()
+
+    def is_relative(self, url):
+        return not(bool(urlparse(url).netloc))
+
     def start_requests(self):
-        project_dir = os.getcwd()
+        
         file_name = 'local_businesses.json'
+        # Normalize the path
+        path = os.path.normpath(self.project_dir)
+        
+        if os.path.isdir(path):
+            # Open the folder in the file explorer
+            subprocess.run([os.path.join(os.getenv('WINDIR'), 'explorer.exe'), path])
+        elif os.path.isfile(path):
+            # Select the file in the file explorer
+            subprocess.run([os.path.join(os.getenv('WINDIR'), 'explorer.exe'), '/select,', os.path.normpath(path)])
+            
         file_path = ""
         invalid_domain_file = open("invalid_domain.txt", "a")
-
+        
         # Search for the file within the project folder
-        for root, dirs, files in os.walk(project_dir):
+        for root, dirs, files in os.walk(self.project_dir):
             if file_name in files:
                 file_path = os.path.join(root, file_name)
                 break
@@ -34,7 +53,7 @@ class Myspider(scrapy.Spider):
                     print(len(urls))
                     print("dssssdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsdsd")
                     self.start_urls = urls
-                    # self.start_urls = ["http://utahvalleymag.com/"]
+                    # self.start_urls = ["https://www.powerstream.com/"]
                     for url in self.start_urls:
                         domain = tldextract.extract(url).registered_domain
                         if domain:
@@ -56,15 +75,37 @@ class Myspider(scrapy.Spider):
             html = response.text
             
             selector = Selector(text=html)
-            img_tags = selector.xpath("//img[contains(translate(@src, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'logo')]/@src").getall()
+            img_urls = selector.xpath("//img[contains(translate(@src, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'logo')]/@src").getall()
             
-            if len(img_tags) != 0:
-                img_tag = img_tags[0]
+            if len(img_urls) != 0:
+                img_url = img_urls[0]
                 self.successed_counts = self.successed_counts + 1
                 print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-                print(img_tag)
+                print(img_url)
                 print(self.successed_counts)
-                successed_file.write(img_tag + "\n")
+                if self.is_relative(img_url):
+                    img_url = urljoin(response.request.url, img_url)
+                # successed_file.write(response.request.url + "\n")
+                # successed_file.write(img_url + "\n")
+                img_response = requests.get(img_url)
+                p = urlparse(img_url).path
+                url_fn = os.path.basename(p)
+                path = Path(self.project_dir + '/output')
+                if not path.exists():
+                    # Create the folder
+                    path.mkdir()
+                print(path)
+                domain = tldextract.extract(response.request.url).registered_domain
+                # # fn = wget.download(img_url, out=path)
+                # fn = wget.download(img_url, path.joinpath(url_fn))
+                print("fffiiilellksjdflajslfjlsjflsfjsdfsdf")
+                # print(fn)
+                # os.rename('old_name.txt', 'new_name.txt')
+                output_file_path = os.path.join(path, url_fn)
+                with open(output_file_path, 'wb') as f:
+                    f.write(img_response.content)
+                f.close
+                # os.rename(url_fn, domain)
             else:
                 print("No logo found.")
                 failed_file.write(response.request.url + "\n")
