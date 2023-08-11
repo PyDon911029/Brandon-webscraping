@@ -17,7 +17,7 @@ class Myspider(scrapy.Spider):
     allowed_domains = ["example.com"]
     user_agent = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/22.0.1207.1 Safari/537.1'
     successed_counts = 0
-    timestamp = time.time()
+    timestamp = str(time.time())
     
     project_dir = os.getcwd()
 
