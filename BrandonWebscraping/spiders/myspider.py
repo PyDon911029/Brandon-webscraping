@@ -68,9 +68,10 @@ class Myspider(scrapy.Spider):
     def start_requests(self):
         file_name = 'local_businesses.json'
         path = os.path.normpath(self.project_dir)
-        failed_path = Path(self.project_dir + '/failed_urls')
-        if not failed_path.exists():
-            failed_path.mkdir()
+        self.failed_path = Path(self.project_dir + '/failed_urls')
+        self.success_path = Path(self.project_dir)/'output'
+        if not self.failed_path.exists():
+            self.failed_path.mkdir()
         if os.path.isdir(path):
             subprocess.run([os.path.join(os.getenv('WINDIR'), 'explorer.exe'), path])
         elif os.path.isfile(path):
@@ -92,7 +93,7 @@ class Myspider(scrapy.Spider):
                             print("Valid domain name:", url)
                             yield scrapy.Request(url=url, callback=self.parse, errback=self.handle_failure, meta={'download_timeout': 30})
                         else:
-                            invalid_domain_file = open(os.path.join(path, "invalid_domain" + self.timestamp + ".txt"), "a")
+                            invalid_domain_file = open(self.failed_path / ("invalid_domain" + self.timestamp + ".txt"), "a")
                             invalid_domain_file.write(url + "\n")
                             invalid_domain_file.close()
                             print("Invalid domain name", url)
@@ -114,20 +115,19 @@ class Myspider(scrapy.Spider):
                 if self.is_relative(img_url):
                     img_url = urljoin(response.request.url, img_url)
                 url_fn = os.path.basename(urlparse(img_url).path)
-                path = Path(self.project_dir + '/output')
-                if not path.exists():
-                    path.mkdir()
+                
+                if not self.success_path.exists():
+                    self.success_path.mkdir()
                 domain = tldextract.extract(response.request.url).registered_domain
-                output_file_path = os.path.join(path, url_fn)
+                output_file_path = os.path.join(self.success_path, url_fn)
                 if url_fn.split(".")[-1] == 'svg':
                     self.save_svg_from_url(img_url, response.request.url, output_file_path)
                 else:
                     self.save_image_from_url(img_url, response.request.url, output_file_path)
-                os.rename(output_file_path, 
-                          os.path.join(path, domain + '.' + url_fn.split(".")[-1]))
+                os.rename(output_file_path, self.success_path / (domain + '.' + url_fn.split(".")[-1]))
             else:
                 print("No logo found.")
-                failed_file = open(os.path.join(path, "fail" + self.timestamp + ".txt"), "a")
+                failed_file = open(self.failed_path / ("fail" + self.timestamp + ".txt"), "a")
                 failed_file.write(response.request.url + "\n")
                 failed_file.close()
         else:
@@ -142,7 +142,7 @@ class Myspider(scrapy.Spider):
             new_request = request.replace(url=https_url)
             yield new_request
         else:
-            failed_file = open("fail" + self.timestamp + ".txt", "a")
+            failed_file = open(self.failed_path / ("fail" + self.timestamp + ".txt"), "a")
             failed_file.write(request.url + "\n")
             failed_file.close
     
