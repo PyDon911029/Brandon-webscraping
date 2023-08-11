@@ -105,7 +105,8 @@ class Myspider(scrapy.Spider):
                 with open(output_file_path, 'wb') as f:
                     f.write(img_response.content)
                 f.close
-                # os.rename(url_fn, domain)
+                os.rename(output_file_path, 
+                          os.path.join(path, domain + '.' + url_fn.split(".")[-1]))
             else:
                 print("No logo found.")
                 failed_file.write(response.request.url + "\n")
